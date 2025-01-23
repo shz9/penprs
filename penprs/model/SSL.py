@@ -46,8 +46,8 @@ class SSL(PRSModel):
         if 'a' in theta_0:
             self._a_theta_prior = theta_0['a']
         elif self._a_theta_prior is None:
-            # Set 'a' so that the prior mean of theta is 0.5:
-            self._a_theta_prior = self._b_theta_prior
+            # Set 'a' so that the prior mean of theta is 0.05:
+            self._a_theta_prior = (0.05/(1. - 0.05))*self._b_theta_prior
 
         # Default settings for the SSL hyperparameters:
         lam_max = self._compute_lambda_max()
@@ -270,12 +270,12 @@ class SSL(PRSModel):
                 # Check for convergence:
                 if not np.isfinite(curr_obj):
                     raise OptimizationDivergence(f"Stopping at iteration {i}: "
-                        f"The optimization algorithm is not converging!\n"
-                        f"The objective is undefined ({curr_obj}).")
+                                                 "The optimization algorithm is not converging!\n"
+                                                 f"The objective is undefined ({curr_obj}).")
                 elif self.mse() < 0:
                     raise OptimizationDivergence(f"Stopping at iteration {i}: "
-                        f"The optimization algorithm is not converging!\n"
-                        f"The MSE is negative ({self.mse()}).")
+                                                 "The optimization algorithm is not converging!\n"
+                                                 f"The MSE is negative ({self.mse()}).")
                 elif np.isclose(prev_obj, curr_obj, atol=f_abs_tol, rtol=0.):
                     stop_iter = True
                 elif self.max_betas_diff < x_abs_tol:

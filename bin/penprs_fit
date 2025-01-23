@@ -510,24 +510,24 @@ def main():
     # Arguments for the validation set (individual-level data):
     parser.add_argument('--validation-bfile', dest='validation_bed', type=str,
                         help='The BED files containing the genotype data for the validation set. '
-                                'You may use a wildcard here (e.g. "data/chr_*.bed")')
+                             'You may use a wildcard here (e.g. "data/chr_*.bed")')
     parser.add_argument('--validation-pheno', dest='validation_pheno', type=str,
                         help='A tab-separated file containing the phenotype for the validation set. '
-                                'The expected format is: FID IID phenotype (no header)')
+                             'The expected format is: FID IID phenotype (no header)')
     parser.add_argument('--validation-keep', dest='validation_keep', type=str,
                         help='A plink-style keep file to select a subset of individuals for the validation set.')
 
     # Arguments for the validation set (summary statistics):
     parser.add_argument('--validation-ld-panel', dest='validation_ld_panel', type=str,
                         help='The path to the directory where the LD matrices for the validation set are stored. '
-                                'Can be a wildcard of the form ld/chr_*')
+                             'Can be a wildcard of the form ld/chr_*')
     parser.add_argument('--validation-sumstats', dest='validation_sumstats_path', type=str,
                         help='The summary statistics directory or file for the validation set. Can be a '
-                                'wildcard of the form sumstats/chr_*')
+                             'wildcard of the form sumstats/chr_*')
     parser.add_argument('--validation-sumstats-format', dest='validation_sumstats_format',
                         type=str.lower,
                         choices={'plink1.9', 'plink2', 'plink', 'cojo', 'magenpy',
-                                    'fastgwa', 'ssf', 'gwas-ssf', 'gwascatalog', 'saige', 'custom'},
+                                 'fastgwa', 'ssf', 'gwas-ssf', 'gwascatalog', 'saige', 'custom'},
                         help='The format for the summary statistics file(s) for the validation set.')
     # For now, suppress the help message for these arguments:
     parser.add_argument('--validation-custom-sumstats-mapper',
