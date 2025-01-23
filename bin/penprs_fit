@@ -123,6 +123,7 @@ class PeakMemoryProfiler:
         """
         return self.max_memory
 
+
 def check_args(args):
     """
     Check the validity, consistency, and completeness of the commandline arguments.
@@ -159,7 +160,7 @@ def check_args(args):
             except ValueError:
                 "The lambda_min parameter must be set to 'infer' or non-negative number."
 
-    if args.hyp_search in ('GS'):
+    if args.hyp_search == 'GS':
 
         if args.grid_metric == 'pseudo_validation':
 
@@ -173,7 +174,9 @@ def check_args(args):
                     raise FileNotFoundError(f"No valid summary statistics files for the validation set "
                                             f"were found at: {args.validation_sumstats_path}")
             else:
-                raise ValueError("To perform pseudo-validation, you need to provide summary statistics for the validation set.")
+                raise ValueError("To perform pseudo-validation, you need to provide "
+                                 "summary statistics for the validation set.")
+
 
 def init_data(args, verbose=True):
     """
@@ -317,7 +320,7 @@ def prepare_model(args, verbose=True):
         print('\n{:-^62}\n'.format('  Model details  '))
 
         print("- Model:", args.model)
-        hyp_map = {'GS': 'Grid search', 'CA': 'Default Coordinate Ascent'}
+        hyp_map = {'GS': 'Grid search', 'CA': 'Coordinate Ascent'}
         print("- Hyperparameter tuning strategy:", hyp_map[args.hyp_search])
         if args.hyp_search in ('BO', 'GS'):
             print("- Model selection criterion:", args.grid_metric)
@@ -331,7 +334,6 @@ def prepare_model(args, verbose=True):
 
     if args.fix_var is not None:
         fix_params = {'var': args.fix_var}
-
 
     models = {
         'SSL': SSL,
@@ -347,6 +349,7 @@ def prepare_model(args, verbose=True):
 
     return p_model
 
+
 def fit_model(model, data_dict, args):
 
     import time
@@ -357,6 +360,8 @@ def fit_model(model, data_dict, args):
     np.random.seed(args.seed)
 
     chromosome = data_dict['train'].chromosomes
+    if len(chromosome) == 1:
+        chromosome = chromosome[0]
 
     result_dict = {
         'ProfilerMetrics': {},
@@ -380,16 +385,26 @@ def fit_model(model, data_dict, args):
 
     fit_start_time = time.time()
 
+    lambda_args = {
+        'min_lambda_frac': args.min_lambda_frac,
+        'max_lambda_frac': args.max_lambda_frac
+    }
+
     for _ in range(3):  # 3 attempts
         try:
-            if args.model == 'SSL':
+
+            if args.cold_start:
+                m.fit(theta_0=lambda_args)
+            elif args.model == 'SSL':
                 m.warm_start_fit(ladder_steps=args.lambda_steps,
-                    save_intermediate=args.hyp_search=='GS')
+                                 save_intermediate=args.hyp_search == 'GS',
+                                 max_lambda_frac=args.max_lambda_frac,
+                                 theta_0=lambda_args)
             elif args.model == 'LASSO':
                 m.pathwise_fit(path_steps=args.lambda_steps,
-                    save_intermediate=args.hyp_search=='GS')
-            else:
-                m.fit()
+                               save_intermediate=args.hyp_search == 'GS',
+                               max_lambda_frac=args.max_lambda_frac,
+                               theta_0=lambda_args)
 
             break
         except OptimizationDivergence as e:
@@ -399,7 +414,6 @@ def fit_model(model, data_dict, args):
                 m.lambda_min = 1e-3
             else:
                 m.lambda_min *= 2.
-
 
     fit_end_time = time.time()
 
@@ -416,8 +430,7 @@ def fit_model(model, data_dict, args):
         result_dict['ProfilerMetrics']['Validation_time'] = round(valid_end_time - valid_start_time, 2)
 
         # TODO: Add validation metrics
-        #result_dict['Validation'] = valid_table
-
+        # result_dict['Validation'] = valid_table
 
     result_dict['Model parameters'] = m.to_table()
     result_dict['Hyperparameters'] = m.to_hyperparameter_table()
@@ -448,7 +461,7 @@ def main():
     """)
     print("Penalized Regression for Polygenic Risk Scores")
     print(f"  Version: 0.0.1 | Release date: January 2025")
-    print("      Authors: Jack Song & Shadi Zabad")
+    print("      Authors: Shadi Zabad & Jack Song")
     print("             McGill University")
     print("-->-->-->-->->->->->-------<-<-<--<-<--<-<--<--\n\n")
 
@@ -466,6 +479,8 @@ def main():
     parser.add_argument('-m', '--model', dest='model', type=str.upper, default='SSL',
                         choices={'SSL', 'LASSO'},
                         help='The model to fit to the data. Options are "SSL" or "Lasso".')
+    parser.add_argument('--cold-start', dest='cold_start', action='store_true', default=False,
+                        help='Fit penalized PRS models without warm-start.')
 
     # Output files / directories:
     parser.add_argument('--output-dir', dest='output_dir', type=str, required=True,
@@ -528,7 +543,7 @@ def main():
                         help=argparse.SUPPRESS)
 
     # model options and hyperparameters
-    parser.add_argument('--float-precision', dest='float_precision', type=str, default='float64',
+    parser.add_argument('--float-precision', dest='float_precision', type=str, default='float32',
                         help='The float precision to use when fitting the model.',
                         choices={'float32', 'float64'})
     parser.add_argument('--use-symmetric-ld', dest='use_symmetric_ld', action='store_true',
@@ -561,6 +576,10 @@ def main():
     parser.add_argument("--lambda-steps", dest = "lambda_steps", type=int, default=20,
                         help='The number of steps (unique values) for the lambda penalty in '
                              'Lasso and SSL models.')
+    parser.add_argument("--min-lambda-frac", dest = "min_lambda_frac", type=float, default=1e-3,
+                        help='Minimum lambda penalty as a fraction of lambda_max.')
+    parser.add_argument("--max-lambda-frac", dest = "max_lambda_frac", type=float, default=.99,
+                        help='Maximum lambda penalty as a fraction of lambda_max.')
 
     # Miscellaneous / general parameters:
 
@@ -676,6 +695,7 @@ def main():
             profm_table.to_csv(output_prefix + '.prof', sep="\t", index=False)
 
     print('>>> Total Runtime:\n', timedelta(seconds=total_end_time - total_start_time))
+
 
 if __name__ == '__main__':
     main()

@@ -25,6 +25,7 @@ class SSL(PRSModel):
         self.theta = None
         self.delta = None
         self.p_gamma = None  # Number of non-zero coefficients
+        self.var = None
         self._a_theta_prior = None
         self._b_theta_prior = None
         self.hyperparam_update_freq = hyperparam_update_freq
@@ -53,13 +54,20 @@ class SSL(PRSModel):
 
         if 'l1' in theta_0:
             self.l1 = theta_0['l1']
+        elif 'min_lambda_frac' in theta_0:
+            self.l1 = theta_0['min_lambda_frac']*lam_max
         elif self.l1 is None:
+            # By default, scale lambda_max by 10^-3:
             self.l1 = 1e-3*lam_max
 
         if 'l0' in theta_0:
             self.l0 = theta_0['l0']
+        elif 'max_lambda_frac' in theta_0:
+            self.l0 = theta_0['max_lambda_frac']*lam_max
         elif self.l0 is None:
-            self.l0 = self.l1*5e2
+            # By default set lambda_0 to 10% of lambda_max
+            # or 100*l1:
+            self.l0 = max(0.1*lam_max, 100*self.l1)
 
         if 'var' in self.fix_params:
             if 'var' in theta_0:
@@ -85,7 +93,6 @@ class SSL(PRSModel):
 
         self._update_delta()
 
-
     def _init_min_var(self, n):
         """
         Initialize the minimum variance for the unknown variance case.
@@ -108,8 +115,7 @@ class SSL(PRSModel):
         Compute the p-star quantity for the spike-and-slab prior.
         """
         return 1./(1. + ((1. - self.theta)/self.theta)*(self.l0/self.l1) *
-            np.exp(-np.abs(self.betas) * (self.l0-self.l1)))
-
+                   np.exp(-np.abs(self.betas) * (self.l0-self.l1)))
 
     def _lambda_star(self):
         """
@@ -176,7 +182,7 @@ class SSL(PRSModel):
             self.low_memory
         )
 
-        #retrieve updated values
+        # Retrieve updated values
         self.delta = np.dtype(self.float_precision).type(delta[0])
         self.theta = np.dtype(self.float_precision).type(theta[0])
         self.var = np.dtype(self.float_precision).type(var[0])
@@ -278,12 +284,13 @@ class SSL(PRSModel):
         return self
 
     def warm_start_fit(self,
-        l0_ladder=None,
-        ladder_steps=20,
-        save_intermediate=False,
-        theta_0=None,
-        param_0=None,
-        **fit_kwargs):
+                       l0_ladder=None,
+                       ladder_steps=20,
+                       max_lambda_frac=.99,
+                       save_intermediate=False,
+                       theta_0=None,
+                       param_0=None,
+                       **fit_kwargs):
 
         """
         Fit the model using a warm-start strategy, where the model is fit
@@ -293,8 +300,12 @@ class SSL(PRSModel):
             in the warm-start strategy. If None, a default ladder of values
             will be used.
         :param ladder_steps: The number of steps to use in the ladder of l0 values.
+        :param max_lambda_frac: The multiplier to use to compute the maximum
+            lambda value for the default ladder of l0 values.
         :param save_intermediate: If True, the model parameters will be saved
             for each `l0` value.
+        :param theta_0: Initial values for the hyperparameters.
+        :param param_0: Initial values for the model parameters.
         :param fit_kwargs: Additional keyword arguments to pass to the `fit`
         """
 
@@ -305,9 +316,16 @@ class SSL(PRSModel):
         self.initialize(theta_0=theta_0, param_0=param_0)
 
         if l0_ladder is None:
+
             # Generate a default ladder of l0 values by
-            # interpolating from `l1` to 10^3*l1 on a log2 scale:
-            l0_ladder = np.logspace(0, 10, num=ladder_steps, base=2) * self.l1
+            # interpolating from `l1` to lam_max on a log2 scale:
+            max_penalty = max_lambda_frac*self._compute_lambda_max()
+
+            l0_ladder = np.logspace(
+                np.log2(self.l1),
+                np.log2(max_penalty),
+                num=ladder_steps,
+                base=2)
 
         if save_intermediate:
             betas = np.empty((self.n_snps, len(l0_ladder)), dtype=self.float_precision)
@@ -348,8 +366,7 @@ class SSL(PRSModel):
     def select_best_model(self, validation_gdl=None, criterion='objective'):
 
         # Call the parent method:
-        best_idx = super().select_best_model(validation_gdl=validation_gdl,
-            criterion=criterion)
+        best_idx = super().select_best_model(validation_gdl=validation_gdl, criterion=criterion)
 
         # Update the hyperparameter:
         self.l0 = self.l0[best_idx]
@@ -370,7 +387,4 @@ class SSL(PRSModel):
             {'Parameter': 'lambda_min', 'Value': self.lambda_min},
             {'Parameter': 'a (theta prior)', 'Value': self._a_theta_prior},
             {'Parameter': 'b (theta prior)', 'Value': self._b_theta_prior},
-            #{'Parameter': 'Log_likelihood', 'Value': self.log_likelihood()},
-            #{'Parameter': 'Penalty', 'Value': self.penalty()},
-            #{'Parameter': 'Objective', 'Value': self.objective()},
         ])

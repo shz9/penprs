@@ -30,7 +30,10 @@ class Lasso(PRSModel):
 
         if 'lambda' in theta_0:
             self.lam = theta_0['lambda']
+        elif 'min_lambda_frac' in theta_0:
+            self.lam = theta_0['min_lambda_frac'] * lam_max
         elif self.lam is None:
+            # By default, scale lambda_max by 10^-3:
             self.lam = 1e-3 * lam_max
 
         self.lambda_min = np.dtype(self.float_precision).type(self.lambda_min)
@@ -133,13 +136,14 @@ class Lasso(PRSModel):
         return self
 
     def pathwise_fit(self,
-        lambda_path=None,
-        path_steps=20,
-        largest_first=True,
-        save_intermediate=False,
-        theta_0=None,
-        param_0=None,
-        **fit_kwargs):
+                     lambda_path=None,
+                     path_steps=20,
+                     max_lambda_frac=.99,
+                     largest_first=True,
+                     save_intermediate=False,
+                     theta_0=None,
+                     param_0=None,
+                     **fit_kwargs):
 
         """
         Fit the model using a warm-start strategy, where the model is fit
@@ -149,10 +153,13 @@ class Lasso(PRSModel):
             in the warm-start strategy. If None, a default ladder of values
             will be used.
         :param path_steps: The number of steps to use in the ladder of lambda values.
+        :param max_lambda_frac: The maximum value of the lambda hyperparameter.
         :param largest_first: If True, the ladder of lambda values will be
             sorted in descending order.
         :param save_intermediate: If True, the model parameters will be saved
             for each `l0` value.
+        :param theta_0: The initial values for the hyperparameters.
+        :param param_0: The initial values for the model parameters.
         :param fit_kwargs: Additional keyword arguments to pass to the `fit`
         """
 
@@ -166,12 +173,11 @@ class Lasso(PRSModel):
             # Generate a default ladder of lambda values
             # by interpolating from lambda_max to
             # the current lambda value.
-            lam_max = .99*self._compute_lambda_max()
+            lam_max = max_lambda_frac*self._compute_lambda_max()
             lambda_path = np.logspace(np.log2(self.lam),
                 np.log2(lam_max),
                 num=path_steps,
                 base=2)
-
 
         lambda_path = np.sort(lambda_path)
         if largest_first:
@@ -216,8 +222,7 @@ class Lasso(PRSModel):
     def select_best_model(self, validation_gdl=None, criterion='objective'):
 
         # Call the parent method:
-        best_idx = super().select_best_model(validation_gdl=validation_gdl,
-            criterion=criterion)
+        best_idx = super().select_best_model(validation_gdl=validation_gdl, criterion=criterion)
 
         # Update the hyperparameter:
         self.lam = self.lam[best_idx]
@@ -228,7 +233,8 @@ class Lasso(PRSModel):
             of the model.
         """
 
-        return pd.DataFrame({
-            'lambda': [self.lam],
-            'lambda_min': [self.lambda_min]
-        })
+        return pd.DataFrame([
+            {'Parameter': 'lambda', 'Value': self.lam},
+            {'Parameter': 'Nonzero coefficients', 'Value': self.nnz},
+            {'Parameter': 'lambda_min', 'Value': self.lambda_min},
+        ])
