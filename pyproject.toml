@@ -1,0 +1,15 @@
+[build-system]
+# Minimum requirements for the build system to execute.
+requires = [
+    "setuptools",
+    "wheel",
+    "cython",
+    "extension-helpers",
+    "scipy",
+    "oldest-supported-numpy",
+    "pkgconfig"
+]
+build-backend = "setuptools.build_meta"
+
+# Optional
+build-verbosity = 1

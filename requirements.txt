@@ -1,0 +1,9 @@
+numpy<2
+scipy
+pandas<=2.2.1  # Seen installation issues with newer versions
+tqdm
+magenpy>=0.1.4
+viprs>=0.1.2
+statsmodels
+scikit-learn
+psutil
