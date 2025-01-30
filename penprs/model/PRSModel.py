@@ -25,15 +25,15 @@ class PRSModel:
     """
 
     def __init__(self,
-        gdl,
-        fix_params=None,
-        tracked_params=None,
-        float_precision='float32',
-        lambda_min=None,
-        verbose=True,
-        low_memory=False,
-        dequantize_on_the_fly=False,
-        threads=1):
+                 gdl,
+                 fix_params=None,
+                 tracked_params=None,
+                 float_precision='float32',
+                 lambda_min=None,
+                 verbose=True,
+                 low_memory=False,
+                 dequantize_on_the_fly=False,
+                 threads=1):
         """
         Initialize the PRS model.
         :param gdl: An instance of `GWADataLoader`.
@@ -65,7 +65,6 @@ class PRSModel:
                                                 "initialized in the GWADataLoader object.")
 
         # -------------------- The data --------------------
-
 
         self.chromosome = gdl.chromosomes[0]
         self.shape = self.gdl.shapes[self.chromosome]
@@ -256,7 +255,6 @@ class PRSModel:
 
         raise NotImplementedError
 
-
     def predict(self, test_gdl=None):
         """
         Given the inferred effect sizes, predict the phenotype for the training samples in
@@ -307,8 +305,7 @@ class PRSModel:
             parameter_table = parameter_table.loc[parameter_table['CHR'] == self.chromosome, ]
 
         snp_table = gdl.to_snp_table(col_subset=['SNP', 'A1', 'A2'],
-            per_chromosome=True)[self.chromosome]
-
+                                     per_chromosome=True)[self.chromosome]
 
         from magenpy.utils.model_utils import merge_snp_tables
 
@@ -328,9 +325,15 @@ class PRSModel:
 
         return c_df[beta_cols].values
 
-    def to_table(self,
-        col_subset=('CHR', 'SNP', 'POS', 'A1', 'A2'),
-        prune=False):
+    def to_table(self,  col_subset=('CHR', 'SNP', 'POS', 'A1', 'A2'), prune=False):
+        """
+        Output the model parameters as a `pandas` DataFrame.
+
+        :param col_subset: A tuple of columns to include in the output table.
+        :param prune: Whether to remove rows with zero effect sizes.
+
+        :return: A `pandas` DataFrame containing the model parameters.
+        """
 
         assert self.betas is not None, "The effect sizes are not set. Call `.fit()` first."
 
@@ -432,8 +435,6 @@ class PRSModel:
         assert self.betas.shape[1] > 1, "Multiple models must be fit to select the best model."
 
         if criterion == 'objective':
-            # TODO: Make sure the .objective() method
-            # accommodates multiple betas.
             best_model_idx = np.argmax(self.objective())
         elif criterion == 'validation':
 
@@ -446,7 +447,7 @@ class PRSModel:
             # TODO: Fix the predict method
             prs = self.predict(test_gdl=validation_gdl)
             prs_r2 = np.array([r2(prs[:, i], validation_gdl.sample_table.phenotype)
-                                for i in range(self.betas.shape[1])])
+                               for i in range(self.betas.shape[1])])
             best_model_idx = np.argmax(prs_r2)
 
         elif criterion == 'pseudo_validation':

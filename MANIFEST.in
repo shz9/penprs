@@ -1,0 +1,13 @@
+include MANIFEST.in
+include requirements*.txt
+include LICENSE
+include *.md
+include setup.py
+
+graft penprs
+
+global-exclude *.c
+global-exclude *.cpp
+global-exclude *.so
+global-exclude *.pyd
+global-exclude *.pyc
