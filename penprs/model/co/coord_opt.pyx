@@ -18,6 +18,13 @@ cdef extern from "coord_ascent_ssl.hpp" nogil:
              T l1,
              T theta,
              T var) noexcept nogil
+    
+    T update_var[T](int c_size,
+            T n,
+            T *beta,
+            T *std_beta,
+            T *q,
+            T lam_min) noexcept nogil
 
     void update_beta_ssl[T, U, I](int c_size,
             T n,
@@ -38,6 +45,9 @@ cdef extern from "coord_ascent_ssl.hpp" nogil:
             T *var,
             T *q,
             T *n_per_snp,
+            T init_var,
+            T min_var,
+            bint u_var,
             T dq_scale,
             int *p_gamma,
             int threads,
@@ -92,6 +102,18 @@ cpdef floating cpp_update_delta(floating n,
                     theta,
                     var)
 
+cpdef floating cpp_update_var(floating n,
+                        floating[::1] beta,
+                        floating[::1] std_beta,
+                        floating[::1] q,
+                        floating lam_min) noexcept nogil:
+        return update_var(beta.shape[0],
+                    n,
+                    &beta[0],
+                    &std_beta[0],
+                    &q[0],
+                    lam_min)
+
 cpdef void cpp_update_beta_ssl(int[::1] ld_left_bound,
                         int_dtype[::1] ld_indptr,
                         noncomplex_numeric[::1] ld_data,
@@ -111,6 +133,9 @@ cpdef void cpp_update_beta_ssl(int[::1] ld_left_bound,
                         floating b,
                         int update_freq,
                         floating lam_min,
+                        floating init_var,
+                        floating min_var,
+                        bint u_var,
                         floating dq_scale,
                         int threads,
                         bint low_memory) noexcept nogil:
@@ -134,6 +159,9 @@ cpdef void cpp_update_beta_ssl(int[::1] ld_left_bound,
                     &var[0],
                     &q[0],
                     &n_per_snp[0],
+                    init_var,
+                    min_var,
+                    u_var,
                     dq_scale,
                     &p_gamma[0],
                     threads,

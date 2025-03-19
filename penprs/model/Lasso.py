@@ -124,10 +124,10 @@ class Lasso(PRSModel):
                     raise OptimizationDivergence(f"Stopping at iteration {i}: "
                                                  "The optimization algorithm is not converging!\n"
                                                  f"The objective is undefined ({curr_obj}).")
-                elif self.mse() < 0:
-                    raise OptimizationDivergence(f"Stopping at iteration {i}: "
-                                                 "The optimization algorithm is not converging!\n"
-                                                 f"The MSE is negative ({self.mse()}).")
+                # elif self.mse() < 0:
+                #     raise OptimizationDivergence(f"Stopping at iteration {i}: "
+                #                                  "The optimization algorithm is not converging!\n"
+                #                                  f"The MSE is negative ({self.mse()}).")
                 elif np.isclose(prev_obj, curr_obj, atol=f_abs_tol, rtol=0.):
                     stop_iter = True
                 elif self.max_betas_diff < x_abs_tol:

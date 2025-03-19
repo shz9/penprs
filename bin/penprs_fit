@@ -162,7 +162,7 @@ def check_args(args):
 
     if args.hyp_search == 'GS':
 
-        if args.grid_metric == 'pseudo_validation':
+        if args.grid_metric in ['pseudo_validation', 'pseudo_pearson_validation']:
 
             if args.validation_ld_panel is not None and args.validation_sumstats_path is not None:
                 ld_store_files = get_filenames(args.validation_ld_panel, extension='.zgroup')
@@ -266,7 +266,7 @@ def init_data(args, verbose=True):
                 threads=args.threads
             )
 
-            if args.grid_metric == 'pseudo_validation':
+            if args.grid_metric in ['pseudo_validation', 'pseudo_pearson_validation']:
                 validation_gdl.perform_gwas()
         else:
 
@@ -399,7 +399,8 @@ def fit_model(model, data_dict, args):
                 m.warm_start_fit(ladder_steps=args.lambda_steps,
                                  save_intermediate=args.hyp_search == 'GS',
                                  max_lambda_frac=args.max_lambda_frac,
-                                 theta_0=lambda_args)
+                                 theta_0=lambda_args,
+                                 pathwise_fit = args.ssl_pathwise_fit)
             elif args.model == 'LASSO':
                 m.pathwise_fit(path_steps=args.lambda_steps,
                                save_intermediate=args.hyp_search == 'GS',
@@ -570,7 +571,7 @@ def main():
 
     parser.add_argument('--grid-metric', dest='grid_metric', type=str, default='pseudo_validation',
                         help='The metric for selecting best performing model in grid search.',
-                        choices={'pseudo_validation'})
+                        choices={'pseudo_validation', 'pseudo_pearson_validation'})
 
     # Grid-related parameters:
     parser.add_argument("--lambda-steps", dest = "lambda_steps", type=int, default=20,
@@ -580,6 +581,8 @@ def main():
                         help='Minimum lambda penalty as a fraction of lambda_max.')
     parser.add_argument("--max-lambda-frac", dest = "max_lambda_frac", type=float, default=.99,
                         help='Maximum lambda penalty as a fraction of lambda_max.')
+    parser.add_argument("--ssl-pathwise-fit", dest = "ssl_pathwise_fit", action='store_true', default=False,
+                        help='Fit the SSL model in a pathwise fit fashion similar to LASSO.')
 
     # Miscellaneous / general parameters:
 

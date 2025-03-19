@@ -31,6 +31,12 @@ cpdef floating cpp_update_delta(floating n,
                         floating theta,
                         floating var) noexcept nogil
 
+cpdef floating cpp_update_var(floating n,
+                        floating[::1] beta,
+                        floating[::1] std_beta,
+                        floating[::1] q,
+                        floating lam_min) noexcept nogil
+
 cpdef void cpp_update_beta_ssl(int[::1] ld_left_bound,
                         int_dtype[::1] ld_indptr,
                         noncomplex_numeric[::1] ld_data,
@@ -50,6 +56,9 @@ cpdef void cpp_update_beta_ssl(int[::1] ld_left_bound,
                         floating b,
                         int update_freq,
                         floating lam_min,
+                        floating init_var,
+                        floating min_var,
+                        bint u_var,
                         floating dq_scale,
                         int threads,
                         bint low_memory) noexcept nogil
