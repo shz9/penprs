@@ -1,0 +1,47 @@
+**/__pycache__
+*.py[cod]
+**/.ipynb_checkpoints
+
+# C extensions
+*.c
+*.cpp
+*.so
+
+# Distribution / packaging
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+site/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+.eggs
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# custom
+.idea/
+.vscode/
+.tox/
+.pytest_cache/
+*.html
+*.zarr
+*.npz
+*.log
+*.DS_Store
+**/temp
