@@ -383,7 +383,10 @@ class PRSModel:
                 if callable(attr):
                     self.history[tt].append(attr())
                 else:
-                    self.history[tt].append(attr)
+                    if tt=="betas":
+                        self.history[tt].append(np.copy(attr))
+                    else:
+                        self.history[tt].append(attr)
             elif callable(tt):
                 self.history[tt.__name__].append(tt(self))
 
@@ -409,6 +412,8 @@ class PRSModel:
             return pseudo_pearson_r(test_gdl, param_table)
         elif metric == 'r2':
             return pseudo_r2(test_gdl, param_table)
+        elif metric == "pearson_r2":
+            return pseudo_pearson_r(test_gdl, param_table)**2
         else:
             raise KeyError(f"Pseudo validation metric ({metric}) not recognized. "
                            f"Options are: 'r2' or 'pearson_correlation'.")
@@ -429,7 +434,7 @@ class PRSModel:
         """
 
         # Sanity checks:
-        assert criterion in ('objective', 'validation', 'pseudo_validation')
+        assert criterion in ('objective', 'validation', 'pseudo_validation', 'pseudo_pearson_validation')
         assert self.betas is not None, "The effect sizes are not set. Call `.fit()` first."
         assert len(self.betas.shape) > 1, "Multiple models must be fit to select the best model."
         assert self.betas.shape[1] > 1, "Multiple models must be fit to select the best model."
@@ -453,6 +458,10 @@ class PRSModel:
         elif criterion == 'pseudo_validation':
 
             pseudo_r2 = self.pseudo_validate(validation_gdl, metric='r2')
+            best_model_idx = np.argmax(np.nan_to_num(pseudo_r2, nan=0., neginf=0., posinf=0.))
+        
+        elif criterion == 'pseudo_pearson_validation':
+            pseudo_r2 = self.pseudo_validate(validation_gdl, metric='pearson_r2')
             best_model_idx = np.argmax(np.nan_to_num(pseudo_r2, nan=0., neginf=0., posinf=0.))
 
         if int(self.verbose) > 1:

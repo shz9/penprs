@@ -31,8 +31,23 @@ compute_g(T n, T l0, T l1, T beta_j, T theta, T var) {
     return (lambda_star_beta_j - l1) * (lambda_star_beta_j - l1) + (2 * n / var) * std::log(p_star_beta_j);
 }
 
+
+template <typename T>
+typename std::enable_if<std::is_floating_point<T>::value, T>::type
+compute_mse(int c_size, T* beta, T* std_beta, T* q, T lam_min) {
+    return (1.0- 2.0* dot(std_beta, beta, c_size))
+            + dot(q, beta, c_size)
+            + (1.0+lam_min) * dot(beta, beta, c_size);
+}
+
 /* ------------------------------------------------------------------------ */
 // Main Coordinate Ascent functions
+
+template <typename T>
+typename std::enable_if<std::is_floating_point<T>::value, T>::type
+update_var(int c_size, T n, T* beta, T* std_beta, T* q, T lam_min) {
+    return (n / (n + 2.0)) * compute_mse(c_size, beta, std_beta, q, lam_min);
+}
 
 template <typename T>
 typename std::enable_if<std::is_floating_point<T>::value, T>::type
@@ -75,6 +90,9 @@ update_beta_ssl(int c_size,
     T *var,
     T *q,
     T *n_per_snp,
+    T init_var,
+    T min_var, 
+    bool u_var,
     T dq_scale,
     int *p_gamma,
     int threads,
@@ -86,9 +104,10 @@ update_beta_ssl(int c_size,
     T inv_abp = a + b + c_size;
     T curr_theta = theta[0];
     T curr_delta = delta[0];
+    T curr_var = var[0];
 
     #ifdef _OPENMP
-        #pragma omp parallel for reduction(+:p_gamma_diff) private(ld_start, ld_end, start, end, update_count, curr_theta, curr_delta) schedule(static) num_threads(threads)
+        #pragma omp parallel for reduction(+:p_gamma_diff) private(ld_start, ld_end, start, end, update_count, curr_theta, curr_delta, curr_var) schedule(static) num_threads(threads)
     #endif
     for (int j = 0; j < c_size; ++j) {
 
@@ -128,7 +147,15 @@ update_beta_ssl(int c_size,
 
             // update theta and delta
             curr_theta = static_cast<T>(a + p_gamma[0] + p_gamma_diff) / inv_abp;
-            curr_delta = update_delta(n, l0, l1, curr_theta, var[0]);
+
+            if (u_var){
+                curr_var = update_var(c_size, n, beta, std_beta, q, lam_min);
+
+                if (curr_var < min_var){
+                    curr_var = init_var;
+                }
+            }
+            curr_delta = update_delta(n, l0, l1, curr_theta, curr_var);
 
             update_count = 0;
         }
@@ -136,6 +163,15 @@ update_beta_ssl(int c_size,
 
     p_gamma[0] += p_gamma_diff;
     theta[0] = static_cast<T>(a + p_gamma[0]) / inv_abp;
+
+    if (u_var){
+        var[0] = update_var(c_size, n, beta, std_beta, q, lam_min);
+
+        if (var[0] < min_var){
+            var[0] = init_var;
+        }
+    }
+
     delta[0] = update_delta(n, l0, l1, theta[0], var[0]);
 
 

@@ -5,8 +5,7 @@ import logging
 
 from .PRSModel import PRSModel
 from ..utils.exceptions import OptimizationDivergence
-from .co.coord_opt import cpp_update_delta, cpp_update_beta_ssl
-
+from .co.coord_opt import cpp_update_delta, cpp_update_beta_ssl, cpp_update_var
 
 class SSL(PRSModel):
 
@@ -15,6 +14,7 @@ class SSL(PRSModel):
                  l0=None,
                  l1=None,
                  hyperparam_update_freq=10,
+                 unknown_var = False,
                  **prs_model_kwargs):
 
         super().__init__(gdl, **prs_model_kwargs)
@@ -29,6 +29,8 @@ class SSL(PRSModel):
         self._a_theta_prior = None
         self._b_theta_prior = None
         self.hyperparam_update_freq = hyperparam_update_freq
+
+        self.unknown_var = unknown_var
 
     def initialize_hyperparameters(self, theta_0=None):
 
@@ -69,19 +71,25 @@ class SSL(PRSModel):
             # or 100*l1:
             self.l0 = max(0.1*lam_max, 100*self.l1)
 
+        self.min_var, self.init_var = self._init_min_var(self.n)
+
         if 'var' in self.fix_params:
             if 'var' in theta_0:
                 self.var = theta_0['var']
             else:
                 self.var = 1.
         else:
-            self.var = 1.
+            if self.unknown_var:
+                self.var = self.init_var
+            else:
+                self.var = 1.
 
         if 'theta' in theta_0:
             self.theta = theta_0['theta']
         else:
             # Set theta based on the mean of the Beta prior:
             self.theta = self._a_theta_prior / (self._a_theta_prior + self._b_theta_prior)
+
 
         self._a_theta_prior = np.dtype(self.float_precision).type(self._a_theta_prior)
         self._b_theta_prior = np.dtype(self.float_precision).type(self._b_theta_prior)
@@ -153,7 +161,7 @@ class SSL(PRSModel):
             )
         )
 
-    def _coord_ascent_step(self):
+    def _coord_ascent_step(self, update_var=False):
         """
         Perform a single iteration of the coordinate ascent algorithm
         for the SSL model, given the current settings of the
@@ -177,6 +185,7 @@ class SSL(PRSModel):
             self._a_theta_prior, self._b_theta_prior,
             self.hyperparam_update_freq,
             self.lambda_min,
+            self.init_var, self.min_var, update_var,
             self.dequantize_scale,
             self.threads,
             self.low_memory
@@ -189,8 +198,17 @@ class SSL(PRSModel):
         self.p_gamma = p_gamma[0]
 
     def _update_var(self):
-        if "var" not in self.fix_params:
-            self.var = self.n/(self.n+2) * self.mse()
+        # self.var = self.n/(self.n+2) * self.mse()
+        self.var = np.dtype(self.float_precision).type(
+            cpp_update_var(
+                np.dtype('float64').type(self.n),
+                np.dtype('float64').type(self.betas),
+                np.dtype('float64').type(self.std_beta),
+                np.dtype('float64').type(self.q),
+                np.dtype('float64').type(self.lambda_min)
+            )
+        )
+
 
     def penalty(self):
         """
@@ -223,6 +241,7 @@ class SSL(PRSModel):
             min_iter=3,
             f_abs_tol=1e-4,
             x_abs_tol=1e-4,
+            update_var=False,
             disable_pbar=False):
 
         # initialize parameters
@@ -248,10 +267,12 @@ class SSL(PRSModel):
                 pbar.total = i - 1
                 pbar.refresh()
                 pbar.close()
+                
+                self.prev_n_it = i-1
                 break
 
             # Run the coordinate ascent step:
-            self._coord_ascent_step()
+            self._coord_ascent_step(update_var=update_var)
             # Update the tracked parameters (including objectives):
             self.update_history()
 
@@ -284,13 +305,15 @@ class SSL(PRSModel):
         return self
 
     def warm_start_fit(self,
-                       l0_ladder=None,
-                       ladder_steps=20,
-                       max_lambda_frac=.99,
-                       save_intermediate=False,
-                       theta_0=None,
-                       param_0=None,
-                       **fit_kwargs):
+                        l0_ladder=None,
+                        ladder_steps=20,
+                        max_lambda_frac=.99,
+                        pathwise_fit = False,
+                        pathwise_decrease_l1 = False,
+                        save_intermediate=False,
+                        theta_0=None,
+                        param_0=None,
+                        **fit_kwargs):
 
         """
         Fit the model using a warm-start strategy, where the model is fit
@@ -313,7 +336,8 @@ class SSL(PRSModel):
             "Either `l0_ladder` or `ladder_steps` must be provided."
         )
 
-        self.initialize(theta_0=theta_0, param_0=param_0)
+        if self.betas is None:
+            self.initialize(theta_0=theta_0, param_0=param_0)
 
         if l0_ladder is None:
 
@@ -321,11 +345,27 @@ class SSL(PRSModel):
             # interpolating from `l1` to lam_max on a log2 scale:
             max_penalty = max_lambda_frac*self._compute_lambda_max()
 
-            l0_ladder = np.logspace(
-                np.log2(self.l1),
+
+            # run warm-start fit in a pathwise style or default 
+            if pathwise_fit:
+
+                l0_ladder = np.logspace(np.log2(self.l1),
                 np.log2(max_penalty),
                 num=ladder_steps,
                 base=2)
+
+                l0_ladder = np.sort(l0_ladder)
+                l0_ladder = l0_ladder[::-1]
+
+                if pathwise_decrease_l1:
+                    self.l0 = 0.99*max_penalty
+            else:
+
+                l0_ladder = np.logspace(
+                    np.log2(self.l1),
+                    np.log2(max_penalty),
+                    num=ladder_steps,
+                    base=2)
 
         if save_intermediate:
             betas = np.empty((self.n_snps, len(l0_ladder)), dtype=self.float_precision)
@@ -337,18 +377,38 @@ class SSL(PRSModel):
                     desc=f'Chromosome {self.chromosome} ({self.n_snps} variants)')
 
         for i in pbar:
+            
+            if pathwise_decrease_l1:
+                self.l1 = l0_ladder[i]
+            else:
+                self.l0 = l0_ladder[i]
 
-            self.l0 = l0_ladder[i]
             if i == 0:
                 self.update_history()
 
-            self.fit(continued=True, disable_pbar=True, **fit_kwargs)
+            update_var = False
+
+            if i !=0 and self.unknown_var:
+                if self.prev_n_it < 100 :
+                    update_var = True
+                    self._update_var()
+
+                    if self.var < self.min_var:
+                        self.var = self.init_var
+                        update_var = False
+                else:
+                    update_var = False
+                    if self.prev_n_it == 1000:
+                        self.var = self.init_var
+
+            self.fit(continued=True, disable_pbar=True, update_var=update_var, **fit_kwargs)
 
             pbar.set_postfix(
                 {
                     'Objective': f"{self.objective():.3f}",
                     'Nonzero': self.p_gamma,
-                    'l0': f"{self.l0:.2f}"
+                    'l0': f"{self.l0:.2f}",
+                    'var': f"{self.var:.3f}"
                 }
             )
 
