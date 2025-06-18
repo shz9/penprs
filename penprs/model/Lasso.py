@@ -7,6 +7,7 @@ from .PRSModel import PRSModel
 from ..utils.exceptions import OptimizationDivergence
 from .co.coord_opt import cpp_update_beta_lasso
 
+
 class Lasso(PRSModel):
 
     def __init__(self,

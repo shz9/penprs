@@ -183,7 +183,7 @@ extensions = [
         include_dirs=[np.get_include()] + blas_flags["include_dirs"],
         library_dirs=blas_flags["library_dirs"],
         define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")] +
-            blas_flags["define_macros"],
+                      blas_flags["define_macros"],
         extra_compile_args=["-O3", "-std=c++17"],
     )
 ]
@@ -225,10 +225,10 @@ else:
 # Read description/dependencies from file:
 
 with open("README.md", "r", encoding="utf-8") as fh:
-     long_description = fh.read()
+    long_description = fh.read()
 
 with open("requirements.txt") as fp:
-     install_requires = fp.read().strip().split("\n")
+    install_requires = fp.read().strip().split("\n")
 
 # with open("requirements-optional.txt") as fp:
 #     opt_requires = fp.read().strip().split("\n")
@@ -244,7 +244,7 @@ with open("requirements.txt") as fp:
 setup(
     name="penprs",
     version="0.0.1",
-    description="Penalized methods for PRS Inference",
+    description="Penalized Regression for PRS Inference",
     package_dir={"": "."},
     packages=find_packages(),
     python_requires=">=3.8",
