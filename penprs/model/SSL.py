@@ -14,7 +14,6 @@ class SSL(PRSModel):
                  l0=None,
                  l1=None,
                  hyperparam_update_freq=10,
-                 scale_with_sqrt_p = False,
                  unknown_var = False,
                  **prs_model_kwargs):
 
@@ -31,7 +30,6 @@ class SSL(PRSModel):
         self._b_theta_prior = None
         self.hyperparam_update_freq = hyperparam_update_freq
 
-        self.scale_with_sqrt_p = scale_with_sqrt_p
         self.unknown_var = unknown_var
 
     def initialize_hyperparameters(self, theta_0=None):
@@ -42,28 +40,16 @@ class SSL(PRSModel):
             else:
                 theta_0 = {}
 
-        if self.scale_with_sqrt_p:
-            if 'b' in theta_0:
-                self._b_theta_prior = theta_0['b']
-            elif self._b_theta_prior is None:
-                self._b_theta_prior = 0.95*np.sqrt(self.n_snps)
+        if 'b' in theta_0:
+            self._b_theta_prior = theta_0['b']
+        elif self._b_theta_prior is None:
+            self._b_theta_prior = self.n_snps
 
-            if 'a' in theta_0:
-                self._a_theta_prior = theta_0['a']
-            elif self._a_theta_prior is None:
-                # Set 'a' so that the prior mean of theta is 0.05:
-                self._a_theta_prior = 0.05*np.sqrt(self.n_snps)
-        else:
-            if 'b' in theta_0:
-                self._b_theta_prior = theta_0['b']
-            elif self._b_theta_prior is None:
-                self._b_theta_prior = self.n_snps
-
-            if 'a' in theta_0:
-                self._a_theta_prior = theta_0['a']
-            elif self._a_theta_prior is None:
-                # Set 'a' so that the prior mean of theta is 0.05:
-                self._a_theta_prior = (0.05/(1. - 0.05))*self._b_theta_prior
+        if 'a' in theta_0:
+            self._a_theta_prior = theta_0['a']
+        elif self._a_theta_prior is None:
+            # Set 'a' so that the prior mean of theta is 0.05:
+            self._a_theta_prior = (0.05/(1. - 0.05))*self._b_theta_prior
 
         # Default settings for the SSL hyperparameters:
         lam_max = self._compute_lambda_max()
@@ -307,10 +293,10 @@ class SSL(PRSModel):
                     raise OptimizationDivergence(f"Stopping at iteration {i}: "
                                                  "The optimization algorithm is not converging!\n"
                                                  f"The objective is undefined ({curr_obj}).")
-                # elif self.mse() < 0:
-                #     raise OptimizationDivergence(f"Stopping at iteration {i}: "
-                #                                  "The optimization algorithm is not converging!\n"
-                #                                  f"The MSE is negative ({self.mse()}).")
+                elif self.mse() < 0:
+                    raise OptimizationDivergence(f"Stopping at iteration {i}: "
+                                                 "The optimization algorithm is not converging!\n"
+                                                 f"The MSE is negative ({self.mse()}).")
                 elif np.isclose(prev_obj, curr_obj, atol=f_abs_tol, rtol=0.):
                     stop_iter = True
                 elif self.max_betas_diff < x_abs_tol:
