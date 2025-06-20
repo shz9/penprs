@@ -247,7 +247,7 @@ def init_data(args, verbose=True):
 
     # ----------------------------------------------------------
 
-    if args.hyp_search in ('BO', 'GS'):
+    if args.hyp_search == 'GS':
 
         if verbose:
             print(">>> Reading the validation dataset...")
@@ -320,9 +320,9 @@ def prepare_model(args, verbose=True):
         print('\n{:-^62}\n'.format('  Model details  '))
 
         print("- Model:", args.model)
-        hyp_map = {'GS': 'Grid search', 'CA': 'Coordinate Ascent'}
+        hyp_map = {'GS': 'Grid search', 'WS': 'Warm Start'}
         print("- Hyperparameter tuning strategy:", hyp_map[args.hyp_search])
-        if args.hyp_search in ('BO', 'GS'):
+        if args.hyp_search == 'GS':
             print("- Model selection criterion:", args.grid_metric)
 
     if args.lambda_min == 'infer' or args.lambda_min is None:
@@ -564,10 +564,10 @@ def main():
                         help='The maximum number of iterations to run the coordinate ascent algorithm.')
 
     # Arguments for Hyperparameter tuning / model initialization:
-    parser.add_argument('--hyp-search', dest='hyp_search', type=str, default='CA',
-                        choices={'CA', 'GS'},
+    parser.add_argument('--hyp-search', dest='hyp_search', type=str, default='WS',
+                        choices={'WS', 'GS'},
                         help='The strategy for tuning the hyperparameters of the model. '
-                             'Options are GS (Grid search)')
+                             'Options are WS (Warm-start across ladder), GS (Grid search)')
 
     parser.add_argument('--grid-metric', dest='grid_metric', type=str, default='pseudo_validation',
                         help='The metric for selecting best performing model in grid search.',

@@ -93,10 +93,14 @@ class PRSModel:
             ld_dtype = float_precision
             dequantize_on_the_fly = False
 
-        self.ld_data, self.ld_indptr, self.ld_left_bound = ld_mat.load_data(
-                return_symmetric=not low_memory,
-                dtype=ld_dtype
-        )
+        # self.ld_data, self.ld_indptr, self.ld_left_bound = ld_mat.load_data(
+        #         return_symmetric=not low_memory,
+        #         dtype=ld_dtype
+        # )
+        ld_lop = ld_mat.load(return_symmetric=not low_memory, dtype=ld_dtype)
+        self.ld_data = ld_lop.ld_data
+        self.ld_indptr = ld_lop.ld_indptr
+        self.ld_left_bound = ld_lop.leftmost_idx
 
         # ------------- Data-dependent properties -------------
 
