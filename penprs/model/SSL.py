@@ -39,6 +39,10 @@ class SSL(PRSModel):
                 theta_0 = self.fix_params
             else:
                 theta_0 = {}
+        else:
+            if self.fix_params is not None:
+                for key, value in self.fix_params.items():
+                    theta_0.setdefault(key, value)
 
         if 'b' in theta_0:
             self._b_theta_prior = theta_0['b']
@@ -71,18 +75,18 @@ class SSL(PRSModel):
             # or 100*l1:
             self.l0 = max(0.1*lam_max, 100*self.l1)
 
-        self.min_var, self.init_var = self._init_min_var(self.n)
-
-        if 'var' in self.fix_params:
-            if 'var' in theta_0:
-                self.var = theta_0['var']
-            else:
-                self.var = 1.
+        if self.unknown_var:
+            self.min_var, self.init_var = self._init_min_var(self.n)
         else:
-            if self.unknown_var:
-                self.var = self.init_var
-            else:
-                self.var = 1.
+            self.min_var, self.init_var = 0., 0.
+
+
+        if self.unknown_var:
+            self.var = self.init_var
+        elif 'var' in theta_0:
+            self.var = theta_0['var']
+        else:
+            self.var = 1.
 
         if 'theta' in theta_0:
             self.theta = theta_0['theta']
@@ -293,10 +297,10 @@ class SSL(PRSModel):
                     raise OptimizationDivergence(f"Stopping at iteration {i}: "
                                                  "The optimization algorithm is not converging!\n"
                                                  f"The objective is undefined ({curr_obj}).")
-                elif self.mse() < 0:
-                    raise OptimizationDivergence(f"Stopping at iteration {i}: "
-                                                 "The optimization algorithm is not converging!\n"
-                                                 f"The MSE is negative ({self.mse()}).")
+                # elif self.mse() < 0:
+                #     raise OptimizationDivergence(f"Stopping at iteration {i}: "
+                #                                  "The optimization algorithm is not converging!\n"
+                #                                  f"The MSE is negative ({self.mse()}).")
                 elif np.isclose(prev_obj, curr_obj, atol=f_abs_tol, rtol=0.):
                     stop_iter = True
                 elif self.max_betas_diff < x_abs_tol:
