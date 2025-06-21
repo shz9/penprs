@@ -216,7 +216,7 @@ def init_data(args, verbose=True):
     # Construct a GWADataLoader object using LD + summary statistics:
     gdl = GWADataLoader(ld_store_files=args.ld_dir,
                         temp_dir=args.temp_dir,
-                        verbose=verbose,
+                        # verbose=verbose,
                         threads=args.threads)
 
     # Unless the user explicitly decides to keep them, filter long-range LD regions:
@@ -273,7 +273,7 @@ def init_data(args, verbose=True):
             # Construct the validation GWADataLoader object using LD + summary statistics:
             validation_gdl = GWADataLoader(ld_store_files=args.validation_ld_panel,
                                            temp_dir=args.temp_dir,
-                                           verbose=verbose,
+                                        #    verbose=verbose,
                                            threads=args.threads)
 
             # Prepare the validation summary statistics parsers:
@@ -340,12 +340,23 @@ def prepare_model(args, verbose=True):
         'LASSO': Lasso
     }
 
-    p_model = partial(models[args.model],
-                lambda_min=lambda_min,
-                low_memory=not args.use_symmetric_ld,
-                dequantize_on_the_fly=args.dequantize_on_the_fly,
-                float_precision=args.float_precision,
-                threads=args.threads)
+    if args.model == "SSL":
+        p_model = partial(models[args.model],
+                    lambda_min=lambda_min,
+                    low_memory=not args.use_symmetric_ld,
+                    dequantize_on_the_fly=args.dequantize_on_the_fly,
+                    float_precision=args.float_precision,
+                    threads=args.threads,
+                    fix_params = fix_params,
+                    unknown_var = args.unknown_var)
+    else:
+        p_model = partial(models[args.model],
+                    lambda_min=lambda_min,
+                    low_memory=not args.use_symmetric_ld,
+                    dequantize_on_the_fly=args.dequantize_on_the_fly,
+                    float_precision=args.float_pffirecision,
+                    threads=args.threads,
+                    fix_params = fix_params)
 
     return p_model
 
@@ -553,9 +564,13 @@ def main():
     parser.add_argument('--dequantize-on-the-fly', dest='dequantize_on_the_fly', action='store_true',
                         default=False,
                         help='Dequantize the entries of the LD matrix on-the-fly during inference.')
-    parser.add_argument('--fix-var', dest='fix_var', type=float,
+    parser.add_argument('--fix-var', dest='fix_var', type=float, default=1.0,
                         help='Set the value of the residual variance hyperparameter, variance/sigma2, '
-                             'to the provided value.')
+                             'to the provided value for the fixed variance case. '
+                              ' (see also --unknown-var for the unknown variance case)')
+    parser.add_argument('--unknown-var', dest='unknown_var', action='store_true',
+                        help='Fit the SSL model across the warm-start ladder by estimating the assumed to '
+                        'be unknown variance/sigma2.')
     parser.add_argument('--lambda-min', dest='lambda_min', type=str,
                         help='Set the value of the lambda_min parameter, which acts as a regularizer for '
                              'the effect sizes and compensates for noise in the LD matrix. Set to "infer" to '
