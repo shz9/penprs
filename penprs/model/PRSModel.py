@@ -403,8 +403,8 @@ class PRSModel:
 
         :return: The pseudo-validation metric.
         """
-
-        from viprs.eval.pseudo_metrics import pseudo_r2, pseudo_pearson_r
+        from penprs.eval.pseudo_metrics import pseudo_r2
+        from viprs.eval.pseudo_metrics import pseudo_pearson_r
 
         metric = metric.lower()
 

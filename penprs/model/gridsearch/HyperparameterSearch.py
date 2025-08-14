@@ -192,7 +192,7 @@ class HyperparameterSearch(object):
         if self.criterion == 'training_objective':
             metrics = self._training_objective
         elif self.criterion == 'pseudo_validation':
-            from viprs.eval.pseudo_metrics import pseudo_r2
+            from penprs.eval.pseudo_metrics import pseudo_r2
 
             metrics = pseudo_r2(self._validation_gdl, self._model_coefs)
 
