@@ -354,7 +354,7 @@ def prepare_model(args, verbose=True):
                     lambda_min=lambda_min,
                     low_memory=not args.use_symmetric_ld,
                     dequantize_on_the_fly=args.dequantize_on_the_fly,
-                    float_precision=args.float_pffirecision,
+                    float_precision=args.float_precision,
                     threads=args.threads,
                     fix_params = fix_params)
 
