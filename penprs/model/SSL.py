@@ -31,6 +31,7 @@ class SSL(PRSModel):
         self.hyperparam_update_freq = hyperparam_update_freq
 
         self.unknown_var = unknown_var
+        self.prev_n_it = 0
 
     def initialize_hyperparameters(self, theta_0=None):
 
