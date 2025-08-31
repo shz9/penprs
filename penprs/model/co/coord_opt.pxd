@@ -31,6 +31,15 @@ cpdef floating cpp_update_delta(floating n,
                         floating theta,
                         floating var) noexcept nogil
 
+cpdef void cpp_update_delta_alpha_vec(
+                        floating[::1] delta,   
+                        floating n,            
+                        floating theta,      
+                        floating var,          
+                        floating[::1] l0_vec,  
+                        floating[::1] l1_vec,  
+                        int threads) noexcept nogil
+
 cpdef floating cpp_update_var(floating n,
                         floating[::1] beta,
                         floating[::1] std_beta,
@@ -62,6 +71,33 @@ cpdef void cpp_update_beta_ssl(int[::1] ld_left_bound,
                         floating dq_scale,
                         int threads,
                         bint low_memory) noexcept nogil
+
+cpdef void cpp_update_beta_ssl_alpha(int[::1] ld_left_bound,
+                        int_dtype[::1] ld_indptr,
+                        noncomplex_numeric[::1] ld_data,
+                        floating[::1] std_beta,
+                        floating[::1] beta,
+                        floating[::1] beta_diff,
+                        floating[::1] q,
+                        floating[::1] n_per_snp,
+                        int[::1] p_gamma,
+                        floating[::1] theta,
+                        floating[::1] delta,
+                        floating[::1] var,
+                        floating n,
+                        floating[::1] l0_vec,
+                        floating[::1] l1_vec,
+                        floating a,
+                        floating b,
+                        int update_freq,
+                        floating lam_min,
+                        floating init_var,
+                        floating min_var,
+                        bint u_var,
+                        floating dq_scale,
+                        int threads,
+                        bint low_memory) noexcept nogil
+
 
 cpdef void cpp_update_beta_lasso(int[::1] ld_left_bound,
                         int_dtype[::1] ld_indptr,
