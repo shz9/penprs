@@ -103,11 +103,11 @@ update_beta_ssl(int c_size,
 
     T inv_abp = a + b + c_size;
     T curr_theta = theta[0];
-    T curr_delta = delta[0];
     T curr_var = var[0];
+    delta[0] = update_delta(n, l0, l1, theta[0], var[0]);
 
     #ifdef _OPENMP
-        #pragma omp parallel for reduction(+:p_gamma_diff) private(ld_start, ld_end, start, end, update_count, curr_theta, curr_delta, curr_var) schedule(static) num_threads(threads)
+        #pragma omp parallel for reduction(+:p_gamma_diff) private(ld_start, ld_end, start, end, update_count, curr_theta, curr_var) schedule(static) num_threads(threads)
     #endif
     for (int j = 0; j < c_size; ++j) {
 
@@ -155,8 +155,6 @@ update_beta_ssl(int c_size,
                     curr_var = init_var;
                 }
             }
-            curr_delta = update_delta(n, l0, l1, curr_theta, curr_var);
-
             update_count = 0;
         }
     }
