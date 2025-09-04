@@ -5,14 +5,15 @@ import logging
 
 from .PRSModel import PRSModel
 from ..utils.exceptions import OptimizationDivergence
-from .co.coord_opt import cpp_update_delta, cpp_update_beta_ssl, cpp_update_var
+from .co.coord_opt import cpp_update_delta_alpha_vec, cpp_update_beta_ssl_alpha, cpp_update_var
 
-class SSL(PRSModel):
+class SSLAlpha(PRSModel):
 
     def __init__(self,
                  gdl,
                  l0=None,
                  l1=None,
+                 alpha=-0.25,
                  hyperparam_update_freq=10,
                  unknown_var = False,
                  **prs_model_kwargs):
@@ -32,6 +33,15 @@ class SSL(PRSModel):
 
         self.unknown_var = unknown_var
         self.prev_n_it = 0
+
+        #alpha model specific:
+        self.alpha = alpha
+        self.l0_vec = None 
+        self.l1_vec = None
+        self.v = None
+        self.w = None 
+        self.maf = gdl.to_snp_table()["MAF"].values
+
 
     def initialize_hyperparameters(self, theta_0=None):
 
@@ -95,6 +105,8 @@ class SSL(PRSModel):
             # Set theta based on the mean of the Beta prior:
             self.theta = self._a_theta_prior / (self._a_theta_prior + self._b_theta_prior)
 
+        self.v = 2.0 * self.maf * (1.0-self.maf)
+        self.w = np.power(self.v, (-0.5 * (self.alpha + 1.0)))
 
         self._a_theta_prior = np.dtype(self.float_precision).type(self._a_theta_prior)
         self._b_theta_prior = np.dtype(self.float_precision).type(self._b_theta_prior)
@@ -103,8 +115,18 @@ class SSL(PRSModel):
         self.var = np.dtype(self.float_precision).type(self.var)
         self.lambda_min = np.dtype(self.float_precision).type(self.lambda_min)
         self.theta = np.dtype(self.float_precision).type(self.theta)
+        self.w = np.dtype(self.float_precision).type(self.w)
+        self.delta = np.empty(self.gdl.m, dtype=self.float_precision)
+
+        self._refresh_lambda_vectors()
 
         self._update_delta()
+
+    def _refresh_lambda_vectors(self):
+        """Recompute per-SNP lambda vectors from current globals and weights."""
+        self.l0_vec = (self.l0 * self.w).astype(self.float_precision, copy=False)
+        self.l1_vec = (self.l1 * self.w).astype(self.float_precision, copy=False)
+        # self.l1_vec = np.full(self.gdl.m, self.l1, dtype=self.float_precision)
 
     def _init_min_var(self, n):
         """
@@ -127,15 +149,15 @@ class SSL(PRSModel):
         """
         Compute the p-star quantity for the spike-and-slab prior.
         """
-        return 1./(1. + ((1. - self.theta)/self.theta)*(self.l0/self.l1) *
-                   np.exp(-np.abs(self.betas) * (self.l0-self.l1)))
+        return 1./(1. + ((1. - self.theta)/self.theta)*(self.l0_vec/self.l1_vec) *
+                   np.exp(-np.abs(self.betas) * (self.l0_vec-self.l1_vec)))
 
     def _lambda_star(self):
         """
         Compute the lambda-star quantity for the spike-and-slab prior.
         """
         p_star = self._p_star()
-        return self.l1*p_star + self.l0*(1. - p_star)
+        return self.l1_vec*p_star + self.l0_vec*(1. - p_star)
 
     def _update_theta(self):
         """
@@ -153,17 +175,8 @@ class SSL(PRSModel):
         on the current value of the coefficients and hyperparameters.
         """
 
-        # NOTE: Due to a bug in cython dynamic type
-        # inference, we need to cast the variables to float64
-        # here and then cast the result back to the desired precision
-        self.delta = np.dtype(self.float_precision).type(
-            cpp_update_delta(
-                np.dtype('float64').type(self.n),
-                np.dtype('float64').type(self.l0),
-                np.dtype('float64').type(self.l1),
-                np.dtype('float64').type(self.theta),
-                np.dtype('float64').type(self.var)
-            )
+        cpp_update_delta_alpha_vec(
+            self.delta, self.n, self.theta, self.var, self.l0_vec, self.l1_vec, self.threads
         )
 
     def _coord_ascent_step(self, update_var=False):
@@ -172,21 +185,21 @@ class SSL(PRSModel):
         for the SSL model, given the current settings of the
         coefficients and hyperparameters.
         """
+        self._refresh_lambda_vectors()
 
         # Wrap the hyperparameters in numpy arrays to pass by reference
         # to cython/c++:
-        delta = np.array([self.delta],dtype=self.float_precision)
         theta = np.array([self.theta],dtype=self.float_precision)
         var = np.array([self.var],dtype=self.float_precision)
         p_gamma = np.array([self.p_gamma], dtype=np.int32)
 
-        cpp_update_beta_ssl(
+        cpp_update_beta_ssl_alpha(
             self.ld_left_bound, self.ld_indptr, self.ld_data,
             self.std_beta,
             self.betas, self.betas_diff,
             self.q, self.n_per_snp,
-            p_gamma, theta, delta, var,
-            self.n, self.l0, self.l1,
+            p_gamma, theta, self.delta, var,
+            self.n, self.l0_vec, self.l1_vec,
             self._a_theta_prior, self._b_theta_prior,
             self.hyperparam_update_freq,
             self.lambda_min,
@@ -197,7 +210,6 @@ class SSL(PRSModel):
         )
 
         # Retrieve updated values
-        self.delta = np.dtype(self.float_precision).type(delta[0])
         self.theta = np.dtype(self.float_precision).type(theta[0])
         self.var = np.dtype(self.float_precision).type(var[0])
         self.p_gamma = p_gamma[0]

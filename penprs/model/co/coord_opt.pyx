@@ -53,6 +53,43 @@ cdef extern from "coord_ascent_ssl.hpp" nogil:
             int threads,
             bint low_memory) noexcept nogil
 
+cdef extern from "coord_ascent_ssl_alpha.hpp" nogil:
+    void update_delta_vec[T](int c_size,
+                            T n,
+                            T theta,
+                            T var,
+                            T* l0_vec,
+                            T* l1_vec,
+                            T* delta,
+                            int threads) noexcept nogil
+
+    void update_beta_ssl_alpha[T, U, I](int c_size,
+            T n,
+            T *l0_vec,
+            T *l1_vec,
+            T a,
+            T b,
+            int update_freq,
+            T lam_min,
+            int *ld_left_bound,
+            I *ld_indptr,
+            U *ld_data,
+            T *std_beta,
+            T *beta,
+            T *beta_diff,
+            T *theta,
+            T *delta,
+            T *var,
+            T *q,
+            T *n_per_snp,
+            T init_var,
+            T min_var,
+            bint u_var,
+            T dq_scale,
+            int *p_gamma,
+            int threads,
+            bint low_memory) noexcept nogil
+
 cdef extern from "coord_ascent_lasso.hpp" nogil:
 
     void update_beta_lasso[T, U, I](int c_size,
@@ -101,6 +138,25 @@ cpdef floating cpp_update_delta(floating n,
                     l1,
                     theta,
                     var)
+                    
+cpdef void cpp_update_delta_alpha_vec(
+                        floating[::1] delta,
+                        floating n,
+                        floating theta,
+                        floating var,
+                        floating[::1] l0_vec,
+                        floating[::1] l1_vec,
+                        int threads) noexcept nogil:
+    cdef int c_size = delta.shape[0]
+    update_delta_vec(c_size,
+                     n,
+                     theta,
+                     var,
+                     &l0_vec[0],
+                     &l1_vec[0],
+                     &delta[0],
+                     threads)
+
 
 cpdef floating cpp_update_var(floating n,
                         floating[::1] beta,
@@ -167,6 +223,58 @@ cpdef void cpp_update_beta_ssl(int[::1] ld_left_bound,
                     threads,
                     low_memory)
 
+cpdef void cpp_update_beta_ssl_alpha(int[::1] ld_left_bound,
+                        int_dtype[::1] ld_indptr,
+                        noncomplex_numeric[::1] ld_data,
+                        floating[::1] std_beta,
+                        floating[::1] beta,
+                        floating[::1] beta_diff,
+                        floating[::1] q,
+                        floating[::1] n_per_snp,
+                        int[::1] p_gamma,
+                        floating[::1] theta,
+                        floating[::1] delta,
+                        floating[::1] var,
+                        floating n,
+                        floating[::1] l0_vec,
+                        floating[::1] l1_vec,
+                        floating a,
+                        floating b,
+                        int update_freq,
+                        floating lam_min,
+                        floating init_var,
+                        floating min_var,
+                        bint u_var,
+                        floating dq_scale,
+                        int threads,
+                        bint low_memory) noexcept nogil:
+
+        update_beta_ssl_alpha(beta.shape[0],
+                    n,
+                    &l0_vec[0],
+                    &l1_vec[0],
+                    a,
+                    b,
+                    update_freq,
+                    lam_min,
+                    &ld_left_bound[0],
+                    &ld_indptr[0],
+                    &ld_data[0],
+                    &std_beta[0],
+                    &beta[0],
+                    &beta_diff[0],
+                    &theta[0],
+                    &delta[0],
+                    &var[0],
+                    &q[0],
+                    &n_per_snp[0],
+                    init_var,
+                    min_var,
+                    u_var,
+                    dq_scale,
+                    &p_gamma[0],
+                    threads,
+                    low_memory)
 
 # ---------------- Lasso Coordinate Descent functions ----------------
 

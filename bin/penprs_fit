@@ -314,6 +314,7 @@ def prepare_model(args, verbose=True):
     from functools import partial
 
     from penprs.model.SSL import SSL
+    from penprs.model.SSLAlpha import SSLAlpha
     from penprs.model.Lasso import Lasso
 
     if verbose:
@@ -337,6 +338,7 @@ def prepare_model(args, verbose=True):
 
     models = {
         'SSL': SSL,
+        'SSLAlpha': SSLAlpha,
         'LASSO': Lasso
     }
 
@@ -349,6 +351,16 @@ def prepare_model(args, verbose=True):
                     threads=args.threads,
                     fix_params = fix_params,
                     unknown_var = args.unknown_var)
+    elif args.model == "SSLAlpha":  
+        p_model = partial(models[args.model],
+                alpha=args.alpha,                
+                lambda_min=lambda_min,
+                low_memory=not args.use_symmetric_ld,
+                dequantize_on_the_fly=args.dequantize_on_the_fly,
+                float_precision=args.float_precision,
+                threads=args.threads,
+                fix_params = fix_params,
+                unknown_var = args.unknown_var)
     else:
         p_model = partial(models[args.model],
                     lambda_min=lambda_min,
@@ -406,7 +418,7 @@ def fit_model(model, data_dict, args):
 
             if args.cold_start:
                 m.fit(theta_0=lambda_args)
-            elif args.model == 'SSL':
+            elif args.model in ['SSL', 'SSLAlpha']:
                 m.warm_start_fit(ladder_steps=args.lambda_steps,
                                  save_intermediate=args.hyp_search == 'GS',
                                  max_lambda_frac=args.max_lambda_frac,
@@ -488,9 +500,9 @@ def main():
     parser.add_argument('-s', '--sumstats', dest='sumstats_path', type=str, required=True,
                         help='The summary statistics directory or file. Can be a '
                              'wildcard of the form sumstats/chr_*')
-    parser.add_argument('-m', '--model', dest='model', type=str.upper, default='SSL',
-                        choices={'SSL', 'LASSO'},
-                        help='The model to fit to the data. Options are "SSL" or "Lasso".')
+    parser.add_argument('-m', '--model', dest='model', default='SSL',
+                        choices={'SSL', 'SSLAlpha', 'LASSO'},
+                        help='The model to fit to the data. Options are "SSL", "SSLAlpha", or "Lasso".')
     parser.add_argument('--cold-start', dest='cold_start', action='store_true', default=False,
                         help='Fit penalized PRS models without warm-start.')
 
@@ -577,6 +589,8 @@ def main():
                              'derive this parameter from the properties of the LD matrix itself.')
     parser.add_argument('--max-iter', dest='max_iter', type=int, default=1000,
                         help='The maximum number of iterations to run the coordinate ascent algorithm.')
+    parser.add_argument('--alpha', dest='alpha', type=float, default=-0.25,   
+                    help='Alpha exponent for per-SNP MAF scaling (only used by SSLAlpha).')
 
     # Arguments for Hyperparameter tuning / model initialization:
     parser.add_argument('--hyp-search', dest='hyp_search', type=str, default='WS',
