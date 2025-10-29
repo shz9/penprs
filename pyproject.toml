@@ -12,4 +12,4 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 # Optional
-build-verbosity = 1
+# build-verbosity = 1
