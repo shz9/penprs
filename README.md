@@ -8,7 +8,7 @@
 PenPRS integrates with [`magenpy`](https://github.com/shz9/magenpy) for data harmonization and LD loading and computation. Details related to model methodology and specifications are present in the paper.
 ## Reference 
 
->Song, J., Zabad, S., Yang, A., Gravel, S., & Li, Y. (2025). *Sparse polygenic risk score inference with the spike-and-slab LASSO.* medRxiv. https://doi.org/10.1101/2025.01.28.25321292
+>Song, J., Zabad, S., Yang, A., Gravel, S., & Li, Y. (2025). **Sparse polygenic risk score inference with the spike-and-slab LASSO**. *Bioinformatics*. https://doi.org/10.1093/bioinformatics/btaf578
 
 ## Installation 
 
@@ -98,16 +98,15 @@ For more information on the command line arguments, see `penprs_fit --help`
 If you use this package in your research, please cite the following paper:
 
 ```bibtex
-@article {Song2025.01.28.25321292,
-	author = {Song, Junyi and Zabad, Shadi and Yang, Archer and Li, Yue},
-	title = {Sparse Polygenic Risk Score Inference with the Spike-and-Slab LASSO},
-	elocation-id = {2025.01.28.25321292},
-	year = {2025},
-	doi = {10.1101/2025.01.28.25321292},
-	publisher = {Cold Spring Harbor Laboratory Press},
-	URL = {https://www.medrxiv.org/content/early/2025/01/29/2025.01.28.25321292},
-	eprint = {https://www.medrxiv.org/content/early/2025/01/29/2025.01.28.25321292.full.pdf},
-	journal = {medRxiv}
+@article{10.1093/bioinformatics/btaf578,
+    author = {Song, Junyi and Zabad, Shadi and Yang, Archer and Gravel, Simon and Li, Yue},
+    title = {Sparse Polygenic Risk Score Inference with the Spike-and-Slab LASSO},
+    journal = {Bioinformatics},
+    pages = {btaf578},
+    year = {2025},
+    month = {10},
+    doi = {10.1093/bioinformatics/btaf578},
+    url = {https://doi.org/10.1093/bioinformatics/btaf578},
+    eprint = {https://academic.oup.com/bioinformatics/advance-article-pdf/doi/10.1093/bioinformatics/btaf578/64738987/btaf578.pdf},
 }
-
 ```
