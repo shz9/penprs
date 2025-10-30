@@ -111,9 +111,15 @@ class PRSModel:
             self.dequantize_scale = 1. / info.max
         else:
             self.dequantize_scale = 1.
-
+        
         if lambda_min is None or lambda_min == "infer":
-            self.lambda_min = self.gdl.ld[self.chromosome].get_lambda_min('min')
+            
+            store_attrs = ld_mat.list_store_attributes()
+
+            if 'Spectral properties' not in store_attrs or 'Extremal' not in ld_mat.get_store_attr('Spectral properties'):
+                self.lambda_min = 0.1 #temporary fix
+            else:
+                self.lambda_min = ld_mat.get_lambda_min('min')
         else:
             self.lambda_min = lambda_min
 

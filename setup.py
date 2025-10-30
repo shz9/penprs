@@ -233,8 +233,8 @@ with open("requirements.txt") as fp:
 # with open("requirements-optional.txt") as fp:
 #     opt_requires = fp.read().strip().split("\n")
 
-# with open("requirements-test.txt") as fp:
-#     test_requires = fp.read().strip().split("\n")
+with open("requirements-test.txt") as fp:
+    test_requires = fp.read().strip().split("\n")
 
 # with open("requirements-docs.txt") as fp:
 #     doc_requires = fp.read().strip().split("\n")
@@ -252,6 +252,7 @@ setup(
     scripts=['bin/penprs_fit'],
     install_requires=install_requires,
     # extras_require={'opt': opt_requires, 'test': test_requires, 'docs': doc_requires},
+    extras_require={'test': test_requires},
     ext_modules=extensions,
     zip_safe=False,
 )

@@ -21,8 +21,16 @@ jobs:
         # There are issues to figure out regarding dependency management.
         os: [ubuntu-latest, macos-13, macos-14]
     env:
-      CIBW_SKIP: "pp* cp36-* *-musllinux_* *win32 *_i686 *_s390x"
-      #CIBW_BEFORE_BUILD_WINDOWS: "choco install pkgconfiglite"
+      # ---------- Linux (manylinux_2_28 + dnf) ----------
+      CIBW_MANYLINUX_X86_64_IMAGE: "quay.io/pypa/manylinux_2_28_x86_64"
+      CIBW_BEFORE_BUILD_LINUX: "dnf -y install openblas-devel pkgconf-pkg-config"
+      # include /usr/lib/pkgconfig as well
+      CIBW_ENVIRONMENT_LINUX: "PKG_CONFIG_PATH=/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
+
+      # ---------- macOS (brew OpenBLAS + pkg-config) ----------
+      CIBW_BEFORE_BUILD_MACOS: "brew update && brew install openblas pkg-config || true"
+      CIBW_ENVIRONMENT_MACOS: "PKG_CONFIG_PATH=/usr/local/opt/openblas/lib/pkgconfig:/opt/homebrew/opt/openblas/lib/pkgconfig:/usr/local/lib/pkgconfig:/opt/homebrew/lib/pkgconfig"
+      CIBW_SKIP: "cp38-* pp* cp36-* *-musllinux_* *win32 *_i686 *_s390x"
 
     steps:
       - uses: actions/checkout@v4
