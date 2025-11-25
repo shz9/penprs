@@ -12,10 +12,10 @@ PenPRS integrates with [`magenpy`](https://github.com/shz9/magenpy) for data har
 
 ## Installation 
 
-To install the package from `GitHub`, use the following command:
+To install the package from `PyPI`, use the following command:
 
 ```bash
-pip install git+https://github.com/shz9/penprs.git
+pip install penprs
 ```
 
 ## Quickstart
